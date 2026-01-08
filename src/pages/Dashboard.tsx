@@ -1,0 +1,87 @@
+import { useMemo } from 'react';
+import { mockAssets, calculateDashboardStats } from '@/data/mockData';
+import { StatsCard } from '@/components/dashboard/StatsCard';
+import { AssetsByTypeChart } from '@/components/dashboard/AssetsByTypeChart';
+import { AssetsByStatusChart } from '@/components/dashboard/AssetsByStatusChart';
+import { RecentAssetsTable } from '@/components/dashboard/RecentAssetsTable';
+import { WarrantyAlerts } from '@/components/dashboard/WarrantyAlerts';
+import { 
+  Monitor, 
+  CheckCircle2, 
+  XCircle, 
+  Shield, 
+  AlertTriangle, 
+  Wrench 
+} from 'lucide-react';
+
+export default function Dashboard() {
+  const stats = useMemo(() => calculateDashboardStats(mockAssets), []);
+
+  return (
+    <div className="space-y-6 animate-fade-in">
+      {/* Page Header */}
+      <div>
+        <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
+        <p className="text-muted-foreground mt-1">
+          Overview of your IT assets and key metrics
+        </p>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        <StatsCard
+          title="Total Assets"
+          value={stats.totalAssets}
+          icon={Monitor}
+          variant="primary"
+        />
+        <StatsCard
+          title="Active Assets"
+          value={stats.activeAssets}
+          icon={CheckCircle2}
+          variant="success"
+        />
+        <StatsCard
+          title="Inactive Assets"
+          value={stats.inactiveAssets}
+          icon={XCircle}
+          variant="destructive"
+        />
+        <StatsCard
+          title="Under Warranty"
+          value={stats.underWarranty}
+          icon={Shield}
+          variant="info"
+        />
+        <StatsCard
+          title="Expiring Soon"
+          value={stats.expiringWarranty}
+          icon={AlertTriangle}
+          variant="warning"
+        />
+        <StatsCard
+          title="Requires Action"
+          value={stats.requiresAction}
+          icon={Wrench}
+          variant="destructive"
+        />
+      </div>
+
+      {/* Charts Row */}
+      <div className="grid gap-6 md:grid-cols-2">
+        <AssetsByTypeChart data={stats.assetsByType} />
+        <AssetsByStatusChart data={stats.assetsByStatus} />
+      </div>
+
+      {/* Bottom Row */}
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <RecentAssetsTable assets={mockAssets.slice(0, 5)} />
+        </div>
+        <div>
+          <WarrantyAlerts assets={mockAssets} />
+        </div>
+      </div>
+    </div>
+  );
+}
