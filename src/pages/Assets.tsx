@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { mockAssets } from '@/data/mockData';
-import { Asset, AssetStatus } from '@/types';
+import { Asset } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -39,6 +39,9 @@ import {
   X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { AssetFormDialog } from '@/components/assets/AssetFormDialog';
+import { AssetViewDialog } from '@/components/assets/AssetViewDialog';
+import { DeleteAssetDialog } from '@/components/assets/DeleteAssetDialog';
 
 const statusVariants: Record<string, string> = {
   Active: 'status-active',
@@ -58,10 +61,59 @@ export default function Assets() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [warrantyFilter, setWarrantyFilter] = useState<string>('all');
-  const [assets] = useState<Asset[]>(mockAssets);
+  const [assets, setAssets] = useState<Asset[]>(mockAssets);
+
+  // Dialog states
+  const [formDialogOpen, setFormDialogOpen] = useState(false);
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
 
   const canEdit = hasPermission(['admin']);
   const canDelete = hasPermission(['admin']);
+
+  const handleAddAsset = () => {
+    setSelectedAsset(null);
+    setFormDialogOpen(true);
+  };
+
+  const handleEditAsset = (asset: Asset) => {
+    setSelectedAsset(asset);
+    setFormDialogOpen(true);
+  };
+
+  const handleViewAsset = (asset: Asset) => {
+    setSelectedAsset(asset);
+    setViewDialogOpen(true);
+  };
+
+  const handleDeleteAsset = (asset: Asset) => {
+    setSelectedAsset(asset);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleFormSubmit = (data: Partial<Asset>) => {
+    if (selectedAsset) {
+      // Update existing asset
+      setAssets((prev) =>
+        prev.map((a) =>
+          a.id === selectedAsset.id ? { ...a, ...data } : a
+        )
+      );
+    } else {
+      // Create new asset
+      const newAsset: Asset = {
+        id: `A${String(assets.length + 1).padStart(3, '0')}`,
+        sNo: assets.length + 1,
+        ...data,
+      } as Asset;
+      setAssets((prev) => [...prev, newAsset]);
+    }
+  };
+
+  const handleDeleteConfirm = (assetId: string) => {
+    setAssets((prev) => prev.filter((a) => a.id !== assetId));
+  };
 
   const filteredAssets = useMemo(() => {
     return assets.filter((asset) => {
@@ -130,7 +182,7 @@ export default function Assets() {
             Export
           </Button>
           {canEdit && (
-            <Button>
+            <Button onClick={handleAddAsset}>
               <Plus className="h-4 w-4 mr-2" />
               Add Asset
             </Button>
@@ -288,19 +340,22 @@ export default function Assets() {
                               <MoreHorizontal className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleViewAsset(asset)}>
                               <Eye className="h-4 w-4 mr-2" />
                               View Details
                             </DropdownMenuItem>
                             {canEdit && (
-                              <DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleEditAsset(asset)}>
                                 <Pencil className="h-4 w-4 mr-2" />
                                 Edit
                               </DropdownMenuItem>
                             )}
                             {canDelete && (
-                              <DropdownMenuItem className="text-destructive focus:text-destructive">
+                              <DropdownMenuItem 
+                                onClick={() => handleDeleteAsset(asset)}
+                                className="text-destructive focus:text-destructive"
+                              >
                                 <Trash2 className="h-4 w-4 mr-2" />
                                 Delete
                               </DropdownMenuItem>
@@ -321,6 +376,27 @@ export default function Assets() {
           )}
         </CardContent>
       </Card>
+
+      {/* Dialogs */}
+      <AssetFormDialog
+        open={formDialogOpen}
+        onOpenChange={setFormDialogOpen}
+        asset={selectedAsset}
+        onSubmit={handleFormSubmit}
+      />
+
+      <AssetViewDialog
+        open={viewDialogOpen}
+        onOpenChange={setViewDialogOpen}
+        asset={selectedAsset}
+      />
+
+      <DeleteAssetDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        asset={selectedAsset}
+        onConfirm={handleDeleteConfirm}
+      />
     </div>
   );
 }
