@@ -16,8 +16,18 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
-import { Plus, Trash2, X } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const categoryLabels: Record<DropdownCategory, string> = {
@@ -39,6 +49,10 @@ export default function Settings() {
   const [activeTab, setActiveTab] = useState<DropdownCategory>('brand');
   const [newValue, setNewValue] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [editingOption, setEditingOption] = useState<DropdownOption | null>(null);
+  const [editValue, setEditValue] = useState('');
 
   const canEdit = hasPermission(['admin']);
 
@@ -100,8 +114,63 @@ export default function Settings() {
     });
   };
 
-  const handleDeleteOption = (id: string) => {
-    setOptions(options.filter((opt) => opt.id !== id));
+  const handleEditOption = () => {
+    if (!editingOption || !editValue.trim()) {
+      toast({
+        title: 'Validation Error',
+        description: 'Please enter a value.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const exists = options.some(
+      (opt) =>
+        opt.category === editingOption.category &&
+        opt.id !== editingOption.id &&
+        opt.value.toLowerCase() === editValue.toLowerCase()
+    );
+
+    if (exists) {
+      toast({
+        title: 'Duplicate Value',
+        description: 'This value already exists in this category.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setOptions(
+      options.map((opt) =>
+        opt.id === editingOption.id ? { ...opt, value: editValue.trim() } : opt
+      )
+    );
+    setIsEditDialogOpen(false);
+    setEditingOption(null);
+    setEditValue('');
+
+    toast({
+      title: 'Option Updated',
+      description: `Value has been updated to "${editValue.trim()}".`,
+    });
+  };
+
+  const openEditDialog = (option: DropdownOption) => {
+    setEditingOption(option);
+    setEditValue(option.value);
+    setIsEditDialogOpen(true);
+  };
+
+  const openDeleteDialog = (option: DropdownOption) => {
+    setEditingOption(option);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleDeleteOption = () => {
+    if (!editingOption) return;
+    setOptions(options.filter((opt) => opt.id !== editingOption.id));
+    setIsDeleteDialogOpen(false);
+    setEditingOption(null);
     toast({
       title: 'Option Deleted',
       description: 'The option has been removed.',
@@ -187,12 +256,20 @@ export default function Settings() {
                         <Badge
                           key={option.id}
                           variant="secondary"
-                          className="pl-3 pr-1.5 py-1.5 text-sm flex items-center gap-2"
+                          className="pl-3 pr-1 py-1.5 text-sm flex items-center gap-1"
                         >
                           {option.value}
                           <button
-                            onClick={() => handleDeleteOption(option.id)}
+                            onClick={() => openEditDialog(option)}
+                            className="p-0.5 rounded-full hover:bg-primary/20 hover:text-primary transition-colors"
+                            title="Edit"
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </button>
+                          <button
+                            onClick={() => openDeleteDialog(option)}
                             className="p-0.5 rounded-full hover:bg-destructive/20 hover:text-destructive transition-colors"
+                            title="Delete"
                           >
                             <X className="h-3 w-3" />
                           </button>
@@ -206,6 +283,66 @@ export default function Settings() {
           </Tabs>
         </CardContent>
       </Card>
+
+      {/* Edit Option Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Option</DialogTitle>
+            <DialogDescription>
+              Update the value for this option
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Label htmlFor="editValue">Value</Label>
+            <Input
+              id="editValue"
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              placeholder="Enter value..."
+              className="mt-2"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleEditOption}>Save Changes</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-destructive/10">
+                <AlertTriangle className="h-5 w-5 text-destructive" />
+              </div>
+              <AlertDialogTitle>Delete Option</AlertDialogTitle>
+            </div>
+            <AlertDialogDescription className="pt-2">
+              Are you sure you want to delete{' '}
+              <span className="font-semibold text-foreground">
+                "{editingOption?.value}"
+              </span>
+              ? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setEditingOption(null)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteOption}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* System Info */}
       <Card>
