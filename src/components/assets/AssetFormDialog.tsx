@@ -2,11 +2,17 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { format } from 'date-fns';
+import { format, isValid } from 'date-fns';
 import { CalendarIcon, ChevronLeft, ChevronRight, Check, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Asset, Employee } from '@/types';
 import { mockEmployees, mockDropdownOptions } from '@/data/mockData';
+
+// Helper to safely format dates
+const safeFormatDate = (date: Date | undefined, formatStr: string): string | null => {
+  if (!date || !isValid(date)) return null;
+  return format(date, formatStr);
+};
 
 import {
   Dialog,
@@ -193,7 +199,7 @@ export function AssetFormDialog({
 
   // Auto-populate employee details
   useEffect(() => {
-    if (employeeId) {
+    if (employeeId && employeeId !== 'unassigned') {
       const employee = mockEmployees.find((e) => e.id === employeeId);
       if (employee) {
         setSelectedEmployee(employee);
@@ -271,7 +277,7 @@ export function AssetFormDialog({
         leaseContractCode: data.ownership === 'Leased' ? data.leaseContractCode : undefined,
         amcStartDate: data.amcStartDate ? format(data.amcStartDate, 'yyyy-MM-dd') : undefined,
         amcEndDate: data.amcEndDate ? format(data.amcEndDate, 'yyyy-MM-dd') : undefined,
-        employeeId: data.employeeId || undefined,
+        employeeId: data.employeeId && data.employeeId !== 'unassigned' ? data.employeeId : undefined,
         employeeName: selectedEmployee?.displayName,
         employeeEmail: selectedEmployee?.email,
         employeeType: selectedEmployee?.employeeType,
@@ -607,11 +613,7 @@ export function AssetFormDialog({
                       !field.value && 'text-muted-foreground'
                     )}
                   >
-                    {field.value ? (
-                      format(field.value, 'PPP')
-                    ) : (
-                      <span>Pick a date</span>
-                    )}
+                    {safeFormatDate(field.value, 'PPP') || <span>Pick a date</span>}
                     <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                   </Button>
                 </FormControl>
@@ -691,11 +693,7 @@ export function AssetFormDialog({
                       !field.value && 'text-muted-foreground'
                     )}
                   >
-                    {field.value ? (
-                      format(field.value, 'PPP')
-                    ) : (
-                      <span>Pick a date</span>
-                    )}
+                    {safeFormatDate(field.value, 'PPP') || <span>Pick a date</span>}
                     <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                   </Button>
                 </FormControl>
@@ -733,11 +731,7 @@ export function AssetFormDialog({
                           !field.value && 'text-muted-foreground'
                         )}
                       >
-                        {field.value ? (
-                          format(field.value, 'PPP')
-                        ) : (
-                          <span>Pick a date</span>
-                        )}
+                        {safeFormatDate(field.value, 'PPP') || <span>Pick a date</span>}
                         <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                       </Button>
                     </FormControl>
@@ -773,11 +767,7 @@ export function AssetFormDialog({
                           !field.value && 'text-muted-foreground'
                         )}
                       >
-                        {field.value ? (
-                          format(field.value, 'PPP')
-                        ) : (
-                          <span>Pick a date</span>
-                        )}
+                        {safeFormatDate(field.value, 'PPP') || <span>Pick a date</span>}
                         <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                       </Button>
                     </FormControl>
@@ -818,7 +808,7 @@ export function AssetFormDialog({
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="">Unassigned</SelectItem>
+                  <SelectItem value="unassigned">Unassigned</SelectItem>
                   {mockEmployees.map((emp) => (
                     <SelectItem key={emp.id} value={emp.id}>
                       {emp.empNo} - {emp.displayName}
@@ -917,11 +907,7 @@ export function AssetFormDialog({
                         !field.value && 'text-muted-foreground'
                       )}
                     >
-                      {field.value ? (
-                        format(field.value, 'PPP')
-                      ) : (
-                        <span>Pick a date</span>
-                      )}
+                      {safeFormatDate(field.value, 'PPP') || <span>Pick a date</span>}
                       <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                     </Button>
                   </FormControl>
@@ -957,11 +943,7 @@ export function AssetFormDialog({
                         !field.value && 'text-muted-foreground'
                       )}
                     >
-                      {field.value ? (
-                        format(field.value, 'PPP')
-                      ) : (
-                        <span>Pick a date</span>
-                      )}
+                      {safeFormatDate(field.value, 'PPP') || <span>Pick a date</span>}
                       <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                     </Button>
                   </FormControl>
