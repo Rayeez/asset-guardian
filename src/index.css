@@ -169,6 +169,10 @@
     @apply bg-destructive/10 text-destructive border-destructive/20;
   }
 
+  .status-removed {
+    @apply bg-muted text-muted-foreground border-muted-foreground/20;
+  }
+
   /* Card hover effects */
   .card-interactive {
     @apply transition-all duration-200 hover:shadow-lg hover:border-primary/20;

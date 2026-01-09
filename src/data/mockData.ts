@@ -256,13 +256,14 @@ export const mockAssets: Asset[] = [
 
 // Calculate Dashboard Stats
 export const calculateDashboardStats = (assets: Asset[]): DashboardStats => {
-  const totalAssets = assets.length;
   const activeAssets = assets.filter(a => a.status === 'Active').length;
   const inactiveAssets = assets.filter(a => a.status === 'Inactive').length;
-  const underWarranty = assets.filter(a => a.warrantyStatus === 'Active').length;
-  const expiredWarranty = assets.filter(a => a.warrantyStatus === 'Expired').length;
-  const expiringWarranty = assets.filter(a => a.warrantyStatus === 'Expiring Soon').length;
-  const requiresAction = assets.filter(a => a.action).length;
+  const removedAssets = assets.filter(a => a.status === 'Removed').length;
+  const totalAssets = assets.filter(a => a.status !== 'Removed').length;
+  const underWarranty = assets.filter(a => a.warrantyStatus === 'Active' && a.status !== 'Removed').length;
+  const expiredWarranty = assets.filter(a => a.warrantyStatus === 'Expired' && a.status !== 'Removed').length;
+  const expiringWarranty = assets.filter(a => a.warrantyStatus === 'Expiring Soon' && a.status !== 'Removed').length;
+  const requiresAction = assets.filter(a => a.action && a.status !== 'Removed').length;
 
   const assetsByType = Object.entries(
     assets.reduce((acc, asset) => {
@@ -289,6 +290,7 @@ export const calculateDashboardStats = (assets: Asset[]): DashboardStats => {
     totalAssets,
     activeAssets,
     inactiveAssets,
+    removedAssets,
     underWarranty,
     expiredWarranty,
     expiringWarranty,

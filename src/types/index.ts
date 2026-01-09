@@ -10,7 +10,7 @@ export interface User {
 }
 
 // Asset Types
-export type AssetStatus = 'Active' | 'Inactive' | 'Reserved';
+export type AssetStatus = 'Active' | 'Inactive' | 'Reserved' | 'Removed';
 export type AssetType = 'Laptop' | 'Desktop' | 'Printer' | 'Keyboard' | 'Mouse' | 'Headphone' | 'Monitor' | 'Keyboard + Mouse Combo';
 export type OwnershipType = 'Owned' | 'Leased';
 export type WarrantyType = 'Warranty' | 'AMC' | 'Non-Warranty';
@@ -50,6 +50,8 @@ export interface Asset {
   assetRemark?: string;
   createdAt: string;
   updatedAt: string;
+  removedDate?: string;
+  removalReason?: string;
 }
 
 // Employee Types
@@ -88,6 +90,7 @@ export interface DashboardStats {
   totalAssets: number;
   activeAssets: number;
   inactiveAssets: number;
+  removedAssets: number;
   underWarranty: number;
   expiredWarranty: number;
   expiringWarranty: number;
