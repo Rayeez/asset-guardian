@@ -1,21 +1,24 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { mockAssets, calculateDashboardStats } from '@/data/mockData';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { AssetsByTypeChart } from '@/components/dashboard/AssetsByTypeChart';
 import { AssetsByStatusChart } from '@/components/dashboard/AssetsByStatusChart';
 import { RecentAssetsTable } from '@/components/dashboard/RecentAssetsTable';
 import { WarrantyAlerts } from '@/components/dashboard/WarrantyAlerts';
+import { RemovedAssetsDialog } from '@/components/dashboard/RemovedAssetsDialog';
 import { 
   Monitor, 
   CheckCircle2, 
   XCircle, 
   Shield, 
   AlertTriangle, 
-  Wrench 
+  Wrench,
+  Trash2
 } from 'lucide-react';
 
 export default function Dashboard() {
   const stats = useMemo(() => calculateDashboardStats(mockAssets), []);
+  const [removedDialogOpen, setRemovedDialogOpen] = useState(false);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -28,7 +31,7 @@ export default function Dashboard() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7">
         <StatsCard
           title="Total Assets"
           value={stats.totalAssets}
@@ -46,6 +49,13 @@ export default function Dashboard() {
           value={stats.inactiveAssets}
           icon={XCircle}
           variant="destructive"
+        />
+        <StatsCard
+          title="Removed"
+          value={stats.removedAssets}
+          icon={Trash2}
+          variant="muted"
+          onClick={() => setRemovedDialogOpen(true)}
         />
         <StatsCard
           title="Under Warranty"
@@ -76,12 +86,19 @@ export default function Dashboard() {
       {/* Bottom Row */}
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <RecentAssetsTable assets={mockAssets.slice(0, 5)} />
+          <RecentAssetsTable assets={mockAssets.filter(a => a.status !== 'Removed').slice(0, 5)} />
         </div>
         <div>
-          <WarrantyAlerts assets={mockAssets} />
+          <WarrantyAlerts assets={mockAssets.filter(a => a.status !== 'Removed')} />
         </div>
       </div>
+
+      {/* Removed Assets Dialog */}
+      <RemovedAssetsDialog
+        open={removedDialogOpen}
+        onOpenChange={setRemovedDialogOpen}
+        assets={mockAssets}
+      />
     </div>
   );
 }

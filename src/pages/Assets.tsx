@@ -25,6 +25,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
@@ -37,16 +38,19 @@ import {
   Eye,
   Filter,
   X,
+  MinusCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AssetFormDialog } from '@/components/assets/AssetFormDialog';
 import { AssetViewDialog } from '@/components/assets/AssetViewDialog';
 import { DeleteAssetDialog } from '@/components/assets/DeleteAssetDialog';
+import { RemoveAssetDialog } from '@/components/assets/RemoveAssetDialog';
 
 const statusVariants: Record<string, string> = {
   Active: 'status-active',
   Inactive: 'status-inactive',
   Reserved: 'status-reserved',
+  Removed: 'status-removed',
 };
 
 const warrantyVariants: Record<string, string> = {
@@ -67,6 +71,7 @@ export default function Assets() {
   const [formDialogOpen, setFormDialogOpen] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [removeDialogOpen, setRemoveDialogOpen] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
 
   const canEdit = hasPermission(['admin']);
@@ -92,6 +97,11 @@ export default function Assets() {
     setDeleteDialogOpen(true);
   };
 
+  const handleRemoveAsset = (asset: Asset) => {
+    setSelectedAsset(asset);
+    setRemoveDialogOpen(true);
+  };
+
   const handleFormSubmit = (data: Partial<Asset>) => {
     if (selectedAsset) {
       // Update existing asset
@@ -113,6 +123,22 @@ export default function Assets() {
 
   const handleDeleteConfirm = (assetId: string) => {
     setAssets((prev) => prev.filter((a) => a.id !== assetId));
+  };
+
+  const handleRemoveConfirm = (assetId: string, reason: string) => {
+    setAssets((prev) =>
+      prev.map((a) =>
+        a.id === assetId
+          ? {
+              ...a,
+              status: 'Removed' as const,
+              removedDate: new Date().toISOString().split('T')[0],
+              removalReason: reason,
+              updatedAt: new Date().toISOString().split('T')[0],
+            }
+          : a
+      )
+    );
   };
 
   const filteredAssets = useMemo(() => {
@@ -229,6 +255,7 @@ export default function Assets() {
                 <SelectItem value="Active">Active</SelectItem>
                 <SelectItem value="Inactive">Inactive</SelectItem>
                 <SelectItem value="Reserved">Reserved</SelectItem>
+                <SelectItem value="Removed">Removed</SelectItem>
               </SelectContent>
             </Select>
             <Select value={typeFilter} onValueChange={setTypeFilter}>
@@ -340,16 +367,28 @@ export default function Assets() {
                               <MoreHorizontal className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
+                          <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => handleViewAsset(asset)}>
                               <Eye className="h-4 w-4 mr-2" />
                               View Details
                             </DropdownMenuItem>
-                            {canEdit && (
+                            {canEdit && asset.status !== 'Removed' && (
                               <DropdownMenuItem onClick={() => handleEditAsset(asset)}>
                                 <Pencil className="h-4 w-4 mr-2" />
                                 Edit
                               </DropdownMenuItem>
+                            )}
+                            {canEdit && asset.status !== 'Removed' && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem 
+                                  onClick={() => handleRemoveAsset(asset)}
+                                  className="text-warning focus:text-warning"
+                                >
+                                  <MinusCircle className="h-4 w-4 mr-2" />
+                                  Remove
+                                </DropdownMenuItem>
+                              </>
                             )}
                             {canDelete && (
                               <DropdownMenuItem 
@@ -396,6 +435,13 @@ export default function Assets() {
         onOpenChange={setDeleteDialogOpen}
         asset={selectedAsset}
         onConfirm={handleDeleteConfirm}
+      />
+
+      <RemoveAssetDialog
+        open={removeDialogOpen}
+        onOpenChange={setRemoveDialogOpen}
+        asset={selectedAsset}
+        onConfirm={handleRemoveConfirm}
       />
     </div>
   );
