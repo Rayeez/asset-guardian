@@ -256,7 +256,7 @@ export function AssetFormDialog({
         assetType: data.assetType as Asset['assetType'],
         department: data.department,
         status: data.status as Asset['status'],
-        action: data.action || undefined,
+        action: data.action && data.action !== 'none' ? data.action : undefined,
         brand: data.brand,
         model: data.model,
         serialNo: data.serialNo,
@@ -442,7 +442,7 @@ export function AssetFormDialog({
                 </SelectTrigger>
               </FormControl>
               <SelectContent>
-                <SelectItem value="">None</SelectItem>
+                <SelectItem value="none">None</SelectItem>
                 {getDropdownOptions('action').map((action) => (
                   <SelectItem key={action} value={action}>
                     {action}
