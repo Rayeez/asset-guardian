@@ -39,12 +39,14 @@ import {
   Filter,
   X,
   MinusCircle,
+  UserPlus,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AssetFormDialog } from '@/components/assets/AssetFormDialog';
 import { AssetViewDialog } from '@/components/assets/AssetViewDialog';
 import { DeleteAssetDialog } from '@/components/assets/DeleteAssetDialog';
 import { RemoveAssetDialog } from '@/components/assets/RemoveAssetDialog';
+import { AssignAssetDialog } from '@/components/assets/AssignAssetDialog';
 
 const statusVariants: Record<string, string> = {
   Active: 'status-active',
@@ -72,6 +74,7 @@ export default function Assets() {
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [removeDialogOpen, setRemoveDialogOpen] = useState(false);
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
 
   const canEdit = hasPermission(['admin']);
@@ -100,6 +103,11 @@ export default function Assets() {
   const handleRemoveAsset = (asset: Asset) => {
     setSelectedAsset(asset);
     setRemoveDialogOpen(true);
+  };
+
+  const handleAssignAsset = (asset: Asset) => {
+    setSelectedAsset(asset);
+    setAssignDialogOpen(true);
   };
 
   const handleFormSubmit = (data: Partial<Asset>) => {
@@ -379,6 +387,12 @@ export default function Assets() {
                               </DropdownMenuItem>
                             )}
                             {canEdit && asset.status !== 'Removed' && (
+                              <DropdownMenuItem onClick={() => handleAssignAsset(asset)}>
+                                <UserPlus className="h-4 w-4 mr-2" />
+                                Assign
+                              </DropdownMenuItem>
+                            )}
+                            {canEdit && asset.status !== 'Removed' && (
                               <>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem 
@@ -442,6 +456,13 @@ export default function Assets() {
         onOpenChange={setRemoveDialogOpen}
         asset={selectedAsset}
         onConfirm={handleRemoveConfirm}
+      />
+
+      <AssignAssetDialog
+        open={assignDialogOpen}
+        onOpenChange={setAssignDialogOpen}
+        asset={selectedAsset}
+        onSubmit={handleFormSubmit}
       />
     </div>
   );

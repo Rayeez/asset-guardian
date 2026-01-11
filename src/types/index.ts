@@ -32,12 +32,18 @@ export interface Asset {
   ownership: OwnershipType;
   purchaseVendor: string;
   dateOfPurchase: string;
+  // Price fields
+  purchasePrice?: number;
+  currentValue?: number;
+  depreciationRate?: number;
+  // Warranty fields
   warrantyEndDate: string;
   warrantyType: WarrantyType;
   amcStartDate?: string;
   amcEndDate?: string;
   warrantyStatus: WarrantyStatus;
   leaseContractCode?: string;
+  // Assignment fields
   employeeId?: string;
   employeeName?: string;
   employeeEmail?: string;
@@ -77,7 +83,10 @@ export type DropdownCategory =
   | 'serialNo'
   | 'hostName'
   | 'briefConfig'
-  | 'purchaseVendor';
+  | 'purchaseVendor'
+  | 'department'
+  | 'location'
+  | 'subFunction';
 
 export interface DropdownOption {
   id: string;
@@ -91,11 +100,18 @@ export interface DashboardStats {
   activeAssets: number;
   inactiveAssets: number;
   removedAssets: number;
+  reservedAssets: number;
   underWarranty: number;
   expiredWarranty: number;
   expiringWarranty: number;
   requiresAction: number;
-  assetsByType: { type: string; count: number }[];
-  assetsByDepartment: { department: string; count: number }[];
+  assignedAssets: number;
+  unassignedAssets: number;
+  totalAssetValue: number;
+  totalDepreciation: number;
+  assetsByType: { type: string; count: number; value: number }[];
+  assetsByDepartment: { department: string; count: number; value: number }[];
   assetsByStatus: { status: string; count: number }[];
+  assetsByOwnership: { ownership: string; count: number }[];
+  assetsByLocation: { location: string; count: number }[];
 }

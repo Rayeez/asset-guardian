@@ -5,8 +5,8 @@ import { z } from 'zod';
 import { format, isValid } from 'date-fns';
 import { CalendarIcon, ChevronLeft, ChevronRight, Check, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Asset, Employee } from '@/types';
-import { mockEmployees, mockDropdownOptions } from '@/data/mockData';
+import { Asset } from '@/types';
+import { mockDropdownOptions } from '@/data/mockData';
 
 // Helper to safely format dates
 const safeFormatDate = (date: Date | undefined, formatStr: string): string | null => {
@@ -22,7 +22,6 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Calendar } from '@/components/ui/calendar';
 import {
   Form,
@@ -53,6 +52,7 @@ const assetFormSchema = z.object({
   department: z.string().min(1, 'Department is required'),
   status: z.string().min(1, 'Status is required'),
   action: z.string().optional(),
+  primaryLocation: z.string().min(1, 'Location is required'),
 
   // Step 2: Hardware Details
   brand: z.string().min(1, 'Brand is required'),
@@ -61,10 +61,13 @@ const assetFormSchema = z.object({
   hostName: z.string().min(1, 'Host name is required'),
   briefConfig: z.string().min(1, 'Configuration is required'),
 
-  // Step 3: Ownership & Purchase
+  // Step 3: Purchase & Price
   ownership: z.string().min(1, 'Ownership type is required'),
   purchaseVendor: z.string().min(1, 'Vendor is required'),
   dateOfPurchase: z.date({ required_error: 'Purchase date is required' }),
+  purchasePrice: z.number().min(0, 'Price must be positive').optional(),
+  currentValue: z.number().min(0, 'Value must be positive').optional(),
+  depreciationRate: z.number().min(0).max(100).optional(),
   leaseContractCode: z.string().optional(),
 
   // Step 4: Warranty
@@ -72,15 +75,6 @@ const assetFormSchema = z.object({
   warrantyType: z.string().min(1, 'Warranty type is required'),
   amcStartDate: z.date().optional(),
   amcEndDate: z.date().optional(),
-
-  // Step 5: Assignment
-  employeeId: z.string().optional(),
-  primaryLocation: z.string().min(1, 'Location is required'),
-  userDepartment: z.string().min(1, 'User department is required'),
-  subFunction: z.string().optional(),
-  assignedDate: z.date().optional(),
-  physicallyVerified: z.date().optional(),
-  assetRemark: z.string().optional(),
 });
 
 type AssetFormData = z.infer<typeof assetFormSchema>;
@@ -95,20 +89,8 @@ interface AssetFormDialogProps {
 const STEPS = [
   { id: 1, title: 'Basic Info', description: 'Asset identification' },
   { id: 2, title: 'Hardware', description: 'Device specifications' },
-  { id: 3, title: 'Purchase', description: 'Ownership details' },
+  { id: 3, title: 'Purchase', description: 'Ownership & pricing' },
   { id: 4, title: 'Warranty', description: 'Warranty & AMC' },
-  { id: 5, title: 'Assignment', description: 'Employee & location' },
-];
-
-const ASSET_TYPES = [
-  'Laptop',
-  'Desktop',
-  'Printer',
-  'Keyboard',
-  'Mouse',
-  'Headphone',
-  'Monitor',
-  'Keyboard + Mouse Combo',
 ];
 
 export function AssetFormDialog({
@@ -119,10 +101,15 @@ export function AssetFormDialog({
 }: AssetFormDialogProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const { toast } = useToast();
 
   const isEditing = !!asset;
+
+  const getDropdownOptions = (category: string) => {
+    return mockDropdownOptions
+      .filter((opt) => opt.category === category)
+      .map((opt) => opt.value);
+  };
 
   const form = useForm<AssetFormData>({
     resolver: zodResolver(assetFormSchema),
@@ -132,6 +119,7 @@ export function AssetFormDialog({
       department: '',
       status: 'Active',
       action: '',
+      primaryLocation: '',
       brand: '',
       model: '',
       serialNo: '',
@@ -140,12 +128,10 @@ export function AssetFormDialog({
       ownership: 'Owned',
       purchaseVendor: '',
       leaseContractCode: '',
+      purchasePrice: undefined,
+      currentValue: undefined,
+      depreciationRate: 20,
       warrantyType: 'Warranty',
-      employeeId: '',
-      primaryLocation: '',
-      userDepartment: '',
-      subFunction: '',
-      assetRemark: '',
     },
   });
 
@@ -160,6 +146,7 @@ export function AssetFormDialog({
           department: asset.department,
           status: asset.status,
           action: asset.action || '',
+          primaryLocation: asset.primaryLocation,
           brand: asset.brand,
           model: asset.model,
           serialNo: asset.serialNo,
@@ -168,26 +155,17 @@ export function AssetFormDialog({
           ownership: asset.ownership,
           purchaseVendor: asset.purchaseVendor,
           dateOfPurchase: new Date(asset.dateOfPurchase),
+          purchasePrice: asset.purchasePrice,
+          currentValue: asset.currentValue,
+          depreciationRate: asset.depreciationRate || 20,
           leaseContractCode: asset.leaseContractCode || '',
           warrantyEndDate: new Date(asset.warrantyEndDate),
           warrantyType: asset.warrantyType,
           amcStartDate: asset.amcStartDate ? new Date(asset.amcStartDate) : undefined,
           amcEndDate: asset.amcEndDate ? new Date(asset.amcEndDate) : undefined,
-          employeeId: asset.employeeId || '',
-          primaryLocation: asset.primaryLocation,
-          userDepartment: asset.userDepartment,
-          subFunction: asset.subFunction || '',
-          assignedDate: asset.assignedDate ? new Date(asset.assignedDate) : undefined,
-          physicallyVerified: asset.physicallyVerified ? new Date(asset.physicallyVerified) : undefined,
-          assetRemark: asset.assetRemark || '',
         });
-        if (asset.employeeId) {
-          const emp = mockEmployees.find((e) => e.id === asset.employeeId);
-          setSelectedEmployee(emp || null);
-        }
       } else {
         form.reset();
-        setSelectedEmployee(null);
       }
     }
   }, [open, asset, form]);
@@ -195,35 +173,13 @@ export function AssetFormDialog({
   // Watch for ownership changes to show/hide lease code
   const ownership = form.watch('ownership');
   const warrantyType = form.watch('warrantyType');
-  const employeeId = form.watch('employeeId');
-
-  // Auto-populate employee details
-  useEffect(() => {
-    if (employeeId && employeeId !== 'unassigned') {
-      const employee = mockEmployees.find((e) => e.id === employeeId);
-      if (employee) {
-        setSelectedEmployee(employee);
-        form.setValue('userDepartment', employee.department);
-        form.setValue('subFunction', employee.subFunction || '');
-      }
-    } else {
-      setSelectedEmployee(null);
-    }
-  }, [employeeId, form]);
-
-  const getDropdownOptions = (category: string) => {
-    return mockDropdownOptions
-      .filter((opt) => opt.category === category)
-      .map((opt) => opt.value);
-  };
 
   const validateStep = async (step: number): Promise<boolean> => {
     const fieldsToValidate: (keyof AssetFormData)[][] = [
-      ['assetCode', 'assetType', 'department', 'status'],
+      ['assetCode', 'assetType', 'department', 'status', 'primaryLocation'],
       ['brand', 'model', 'serialNo', 'hostName', 'briefConfig'],
       ['ownership', 'purchaseVendor', 'dateOfPurchase'],
       ['warrantyEndDate', 'warrantyType'],
-      ['primaryLocation', 'userDepartment'],
     ];
 
     const fields = fieldsToValidate[step - 1];
@@ -263,6 +219,8 @@ export function AssetFormDialog({
         department: data.department,
         status: data.status as Asset['status'],
         action: data.action && data.action !== 'none' ? data.action : undefined,
+        primaryLocation: data.primaryLocation,
+        userDepartment: data.department,
         brand: data.brand,
         model: data.model,
         serialNo: data.serialNo,
@@ -271,22 +229,15 @@ export function AssetFormDialog({
         ownership: data.ownership as Asset['ownership'],
         purchaseVendor: data.purchaseVendor,
         dateOfPurchase: format(data.dateOfPurchase, 'yyyy-MM-dd'),
+        purchasePrice: data.purchasePrice,
+        currentValue: data.currentValue,
+        depreciationRate: data.depreciationRate,
         warrantyEndDate: format(data.warrantyEndDate, 'yyyy-MM-dd'),
         warrantyType: data.warrantyType as Asset['warrantyType'],
         warrantyStatus,
         leaseContractCode: data.ownership === 'Leased' ? data.leaseContractCode : undefined,
         amcStartDate: data.amcStartDate ? format(data.amcStartDate, 'yyyy-MM-dd') : undefined,
         amcEndDate: data.amcEndDate ? format(data.amcEndDate, 'yyyy-MM-dd') : undefined,
-        employeeId: data.employeeId && data.employeeId !== 'unassigned' ? data.employeeId : undefined,
-        employeeName: selectedEmployee?.displayName,
-        employeeEmail: selectedEmployee?.email,
-        employeeType: selectedEmployee?.employeeType,
-        primaryLocation: data.primaryLocation,
-        userDepartment: data.userDepartment,
-        subFunction: data.subFunction || undefined,
-        assignedDate: data.assignedDate ? format(data.assignedDate, 'yyyy-MM-dd') : undefined,
-        physicallyVerified: data.physicallyVerified ? format(data.physicallyVerified, 'yyyy-MM-dd') : undefined,
-        assetRemark: data.assetRemark || undefined,
         updatedAt: now,
       };
 
@@ -365,9 +316,20 @@ export function AssetFormDialog({
         render={({ field }) => (
           <FormItem>
             <FormLabel>Asset Code *</FormLabel>
-            <FormControl>
-              <Input placeholder="e.g., BTSPL-LPT-001" {...field} />
-            </FormControl>
+            <Select onValueChange={(val) => field.onChange(val)} value={field.value}>
+              <FormControl>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select asset code prefix" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {getDropdownOptions('assetCode').map((code) => (
+                  <SelectItem key={code} value={code}>
+                    {code}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <FormMessage />
           </FormItem>
         )}
@@ -386,7 +348,7 @@ export function AssetFormDialog({
                 </SelectTrigger>
               </FormControl>
               <SelectContent>
-                {ASSET_TYPES.map((type) => (
+                {getDropdownOptions('assetType').map((type) => (
                   <SelectItem key={type} value={type}>
                     {type}
                   </SelectItem>
@@ -404,9 +366,45 @@ export function AssetFormDialog({
         render={({ field }) => (
           <FormItem>
             <FormLabel>Department *</FormLabel>
-            <FormControl>
-              <Input placeholder="e.g., Engineering" {...field} />
-            </FormControl>
+            <Select onValueChange={field.onChange} value={field.value}>
+              <FormControl>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select department" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {getDropdownOptions('department').map((dept) => (
+                  <SelectItem key={dept} value={dept}>
+                    {dept}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        control={form.control}
+        name="primaryLocation"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Primary Location *</FormLabel>
+            <Select onValueChange={field.onChange} value={field.value}>
+              <FormControl>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select location" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {getDropdownOptions('location').map((loc) => (
+                  <SelectItem key={loc} value={loc}>
+                    {loc}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <FormMessage />
           </FormItem>
         )}
@@ -439,7 +437,7 @@ export function AssetFormDialog({
         control={form.control}
         name="action"
         render={({ field }) => (
-          <FormItem className="sm:col-span-2">
+          <FormItem>
             <FormLabel>Action Required</FormLabel>
             <Select onValueChange={field.onChange} value={field.value}>
               <FormControl>
@@ -496,9 +494,20 @@ export function AssetFormDialog({
         render={({ field }) => (
           <FormItem>
             <FormLabel>Model *</FormLabel>
-            <FormControl>
-              <Input placeholder="e.g., Latitude 5520" {...field} />
-            </FormControl>
+            <Select onValueChange={field.onChange} value={field.value}>
+              <FormControl>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select model" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {getDropdownOptions('model').map((model) => (
+                  <SelectItem key={model} value={model}>
+                    {model}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <FormMessage />
           </FormItem>
         )}
@@ -649,6 +658,66 @@ export function AssetFormDialog({
           )}
         />
       )}
+
+      <FormField
+        control={form.control}
+        name="purchasePrice"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Purchase Price (₹)</FormLabel>
+            <FormControl>
+              <Input
+                type="number"
+                placeholder="e.g., 75000"
+                {...field}
+                value={field.value || ''}
+                onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        control={form.control}
+        name="currentValue"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Current Value (₹)</FormLabel>
+            <FormControl>
+              <Input
+                type="number"
+                placeholder="e.g., 60000"
+                {...field}
+                value={field.value || ''}
+                onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        control={form.control}
+        name="depreciationRate"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Depreciation Rate (%)</FormLabel>
+            <FormControl>
+              <Input
+                type="number"
+                placeholder="e.g., 20"
+                {...field}
+                value={field.value || ''}
+                onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
     </div>
   );
 
@@ -791,200 +860,6 @@ export function AssetFormDialog({
     </div>
   );
 
-  const renderStep5 = () => (
-    <div className="space-y-6">
-      {/* Employee Selection */}
-      <div className="grid gap-4 sm:grid-cols-2">
-        <FormField
-          control={form.control}
-          name="employeeId"
-          render={({ field }) => (
-            <FormItem className="sm:col-span-2">
-              <FormLabel>Assign to Employee</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select employee (optional)" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="unassigned">Unassigned</SelectItem>
-                  {mockEmployees.map((emp) => (
-                    <SelectItem key={emp.id} value={emp.id}>
-                      {emp.empNo} - {emp.displayName}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-      </div>
-
-      {/* Auto-populated Employee Details */}
-      {selectedEmployee && (
-        <div className="rounded-lg border bg-muted/50 p-4">
-          <h4 className="text-sm font-medium mb-3">Employee Details (Auto-populated)</h4>
-          <div className="grid gap-3 sm:grid-cols-2 text-sm">
-            <div>
-              <span className="text-muted-foreground">Name:</span>{' '}
-              <span className="font-medium">{selectedEmployee.displayName}</span>
-            </div>
-            <div>
-              <span className="text-muted-foreground">Email:</span>{' '}
-              <span className="font-medium">{selectedEmployee.email}</span>
-            </div>
-            <div>
-              <span className="text-muted-foreground">Type:</span>{' '}
-              <span className="font-medium">{selectedEmployee.employeeType}</span>
-            </div>
-            <div>
-              <span className="text-muted-foreground">Department:</span>{' '}
-              <span className="font-medium">{selectedEmployee.department}</span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Location Details */}
-      <div className="grid gap-4 sm:grid-cols-2">
-        <FormField
-          control={form.control}
-          name="primaryLocation"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Primary Location *</FormLabel>
-              <FormControl>
-                <Input placeholder="e.g., Bangalore" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="userDepartment"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>User Department *</FormLabel>
-              <FormControl>
-                <Input placeholder="e.g., Engineering" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="subFunction"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Sub-Function</FormLabel>
-              <FormControl>
-                <Input placeholder="e.g., Development" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="assignedDate"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Assigned Date</FormLabel>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <FormControl>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        'w-full pl-3 text-left font-normal',
-                        !field.value && 'text-muted-foreground'
-                      )}
-                    >
-                      {safeFormatDate(field.value, 'PPP') || <span>Pick a date</span>}
-                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                    </Button>
-                  </FormControl>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={field.value}
-                    onSelect={field.onChange}
-                    initialFocus
-                    className="pointer-events-auto"
-                  />
-                </PopoverContent>
-              </Popover>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="physicallyVerified"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Physically Verified</FormLabel>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <FormControl>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        'w-full pl-3 text-left font-normal',
-                        !field.value && 'text-muted-foreground'
-                      )}
-                    >
-                      {safeFormatDate(field.value, 'PPP') || <span>Pick a date</span>}
-                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                    </Button>
-                  </FormControl>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={field.value}
-                    onSelect={field.onChange}
-                    initialFocus
-                    className="pointer-events-auto"
-                  />
-                </PopoverContent>
-              </Popover>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-      </div>
-
-      <FormField
-        control={form.control}
-        name="assetRemark"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Asset Remarks</FormLabel>
-            <FormControl>
-              <Textarea
-                placeholder="Any additional notes about this asset..."
-                className="resize-none"
-                rows={3}
-                {...field}
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-    </div>
-  );
-
   const renderCurrentStep = () => {
     switch (currentStep) {
       case 1:
@@ -995,8 +870,6 @@ export function AssetFormDialog({
         return renderStep3();
       case 4:
         return renderStep4();
-      case 5:
-        return renderStep5();
       default:
         return null;
     }
@@ -1026,28 +899,19 @@ export function AssetFormDialog({
                 onClick={handleBack}
                 disabled={currentStep === 1}
               >
-                <ChevronLeft className="h-4 w-4 mr-2" />
+                <ChevronLeft className="h-4 w-4 mr-1" />
                 Back
               </Button>
 
               {currentStep < STEPS.length ? (
                 <Button type="button" onClick={handleNext}>
                   Next
-                  <ChevronRight className="h-4 w-4 ml-2" />
+                  <ChevronRight className="h-4 w-4 ml-1" />
                 </Button>
               ) : (
                 <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    <>
-                      <Check className="h-4 w-4 mr-2" />
-                      {isEditing ? 'Update Asset' : 'Create Asset'}
-                    </>
-                  )}
+                  {isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  {isEditing ? 'Update Asset' : 'Create Asset'}
                 </Button>
               )}
             </div>
