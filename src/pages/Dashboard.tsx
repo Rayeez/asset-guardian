@@ -3,6 +3,10 @@ import { mockAssets, calculateDashboardStats } from '@/data/mockData';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { AssetsByTypeChart } from '@/components/dashboard/AssetsByTypeChart';
 import { AssetsByStatusChart } from '@/components/dashboard/AssetsByStatusChart';
+import { AssetValueChart } from '@/components/dashboard/AssetValueChart';
+import { DepartmentBreakdown } from '@/components/dashboard/DepartmentBreakdown';
+import { LocationBreakdown } from '@/components/dashboard/LocationBreakdown';
+import { QuickStats } from '@/components/dashboard/QuickStats';
 import { RecentAssetsTable } from '@/components/dashboard/RecentAssetsTable';
 import { WarrantyAlerts } from '@/components/dashboard/WarrantyAlerts';
 import { RemovedAssetsDialog } from '@/components/dashboard/RemovedAssetsDialog';
@@ -13,12 +17,16 @@ import {
   Shield, 
   AlertTriangle, 
   Wrench,
-  Trash2
+  Trash2,
+  Clock
 } from 'lucide-react';
 
 export default function Dashboard() {
   const stats = useMemo(() => calculateDashboardStats(mockAssets), []);
   const [removedDialogOpen, setRemovedDialogOpen] = useState(false);
+
+  const ownedCount = stats.assetsByOwnership.find(o => o.ownership === 'Owned')?.count || 0;
+  const leasedCount = stats.assetsByOwnership.find(o => o.ownership === 'Leased')?.count || 0;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -30,8 +38,8 @@ export default function Dashboard() {
         </p>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7">
+      {/* Stats Cards - Row 1 */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatsCard
           title="Total Assets"
           value={stats.totalAssets}
@@ -39,24 +47,27 @@ export default function Dashboard() {
           variant="primary"
         />
         <StatsCard
-          title="Active Assets"
+          title="Active"
           value={stats.activeAssets}
           icon={CheckCircle2}
           variant="success"
         />
         <StatsCard
-          title="Inactive Assets"
+          title="Inactive"
           value={stats.inactiveAssets}
           icon={XCircle}
           variant="destructive"
         />
         <StatsCard
-          title="Removed"
-          value={stats.removedAssets}
-          icon={Trash2}
-          variant="muted"
-          onClick={() => setRemovedDialogOpen(true)}
+          title="Reserved"
+          value={stats.reservedAssets}
+          icon={Clock}
+          variant="warning"
         />
+      </div>
+
+      {/* Stats Cards - Row 2 */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatsCard
           title="Under Warranty"
           value={stats.underWarranty}
@@ -75,12 +86,36 @@ export default function Dashboard() {
           icon={Wrench}
           variant="destructive"
         />
+        <StatsCard
+          title="Removed"
+          value={stats.removedAssets}
+          icon={Trash2}
+          variant="muted"
+          onClick={() => setRemovedDialogOpen(true)}
+        />
       </div>
 
       {/* Charts Row */}
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         <AssetsByTypeChart data={stats.assetsByType} />
-        <AssetsByStatusChart data={stats.assetsByStatus} />
+        <AssetValueChart data={stats.assetsByType} />
+        <QuickStats
+          assignedAssets={stats.assignedAssets}
+          unassignedAssets={stats.unassignedAssets}
+          totalAssetValue={stats.totalAssetValue}
+          totalDepreciation={stats.totalDepreciation}
+          ownedCount={ownedCount}
+          leasedCount={leasedCount}
+        />
+      </div>
+
+      {/* Breakdown Row */}
+      <div className="grid gap-6 md:grid-cols-2">
+        <DepartmentBreakdown data={stats.assetsByDepartment} />
+        <div className="space-y-6">
+          <AssetsByStatusChart data={stats.assetsByStatus} />
+          <LocationBreakdown data={stats.assetsByLocation} />
+        </div>
       </div>
 
       {/* Bottom Row */}

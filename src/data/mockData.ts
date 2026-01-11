@@ -35,6 +35,9 @@ export const mockAssets: Asset[] = [
     ownership: 'Owned',
     purchaseVendor: 'Dell India',
     dateOfPurchase: '2023-06-15',
+    purchasePrice: 95000,
+    currentValue: 76000,
+    depreciationRate: 20,
     warrantyEndDate: '2026-06-15',
     warrantyType: 'Warranty',
     warrantyStatus: 'Active',
@@ -65,6 +68,9 @@ export const mockAssets: Asset[] = [
     ownership: 'Owned',
     purchaseVendor: 'HP India',
     dateOfPurchase: '2022-03-10',
+    purchasePrice: 75000,
+    currentValue: 45000,
+    depreciationRate: 20,
     warrantyEndDate: '2025-03-10',
     warrantyType: 'Warranty',
     warrantyStatus: 'Expiring Soon',
@@ -96,6 +102,9 @@ export const mockAssets: Asset[] = [
     ownership: 'Owned',
     purchaseVendor: 'Lenovo India',
     dateOfPurchase: '2021-01-20',
+    purchasePrice: 55000,
+    currentValue: 22000,
+    depreciationRate: 20,
     warrantyEndDate: '2024-01-20',
     warrantyType: 'AMC',
     amcStartDate: '2024-01-21',
@@ -128,6 +137,9 @@ export const mockAssets: Asset[] = [
     ownership: 'Owned',
     purchaseVendor: 'Amazon Business',
     dateOfPurchase: '2023-09-05',
+    purchasePrice: 18000,
+    currentValue: 14400,
+    depreciationRate: 20,
     warrantyEndDate: '2026-09-05',
     warrantyType: 'Warranty',
     warrantyStatus: 'Active',
@@ -159,6 +171,9 @@ export const mockAssets: Asset[] = [
     ownership: 'Leased',
     purchaseVendor: 'Dell India',
     dateOfPurchase: '2020-08-12',
+    purchasePrice: 65000,
+    currentValue: 13000,
+    depreciationRate: 20,
     warrantyEndDate: '2023-08-12',
     warrantyType: 'Non-Warranty',
     warrantyStatus: 'Expired',
@@ -186,6 +201,9 @@ export const mockAssets: Asset[] = [
     ownership: 'Owned',
     purchaseVendor: 'Canon India',
     dateOfPurchase: '2022-11-30',
+    purchasePrice: 28000,
+    currentValue: 16800,
+    depreciationRate: 20,
     warrantyEndDate: '2024-11-30',
     warrantyType: 'AMC',
     amcStartDate: '2024-12-01',
@@ -212,6 +230,9 @@ export const mockAssets: Asset[] = [
     ownership: 'Owned',
     purchaseVendor: 'Flipkart Business',
     dateOfPurchase: '2024-01-10',
+    purchasePrice: 2500,
+    currentValue: 2000,
+    depreciationRate: 20,
     warrantyEndDate: '2025-01-10',
     warrantyType: 'Warranty',
     warrantyStatus: 'Expiring Soon',
@@ -237,6 +258,9 @@ export const mockAssets: Asset[] = [
     ownership: 'Owned',
     purchaseVendor: 'Amazon Business',
     dateOfPurchase: '2024-06-20',
+    purchasePrice: 32000,
+    currentValue: 28800,
+    depreciationRate: 10,
     warrantyEndDate: '2026-06-20',
     warrantyType: 'Warranty',
     warrantyStatus: 'Active',
@@ -256,28 +280,40 @@ export const mockAssets: Asset[] = [
 
 // Calculate Dashboard Stats
 export const calculateDashboardStats = (assets: Asset[]): DashboardStats => {
-  const activeAssets = assets.filter(a => a.status === 'Active').length;
-  const inactiveAssets = assets.filter(a => a.status === 'Inactive').length;
-  const removedAssets = assets.filter(a => a.status === 'Removed').length;
-  const totalAssets = assets.filter(a => a.status !== 'Removed').length;
-  const underWarranty = assets.filter(a => a.warrantyStatus === 'Active' && a.status !== 'Removed').length;
-  const expiredWarranty = assets.filter(a => a.warrantyStatus === 'Expired' && a.status !== 'Removed').length;
-  const expiringWarranty = assets.filter(a => a.warrantyStatus === 'Expiring Soon' && a.status !== 'Removed').length;
-  const requiresAction = assets.filter(a => a.action && a.status !== 'Removed').length;
+  const activeAssets = assets.filter(a => a.status === 'Active');
+  const inactiveAssets = assets.filter(a => a.status === 'Inactive');
+  const removedAssets = assets.filter(a => a.status === 'Removed');
+  const reservedAssets = assets.filter(a => a.status === 'Reserved');
+  const nonRemovedAssets = assets.filter(a => a.status !== 'Removed');
+  
+  const totalAssetValue = nonRemovedAssets.reduce((sum, a) => sum + (a.currentValue || 0), 0);
+  const totalPurchaseValue = nonRemovedAssets.reduce((sum, a) => sum + (a.purchasePrice || 0), 0);
+  const totalDepreciation = totalPurchaseValue - totalAssetValue;
+  
+  const assignedAssets = nonRemovedAssets.filter(a => a.employeeId).length;
+  const unassignedAssets = nonRemovedAssets.filter(a => !a.employeeId).length;
 
   const assetsByType = Object.entries(
-    assets.reduce((acc, asset) => {
-      acc[asset.assetType] = (acc[asset.assetType] || 0) + 1;
+    nonRemovedAssets.reduce((acc, asset) => {
+      if (!acc[asset.assetType]) {
+        acc[asset.assetType] = { count: 0, value: 0 };
+      }
+      acc[asset.assetType].count += 1;
+      acc[asset.assetType].value += asset.currentValue || 0;
       return acc;
-    }, {} as Record<string, number>)
-  ).map(([type, count]) => ({ type, count }));
+    }, {} as Record<string, { count: number; value: number }>)
+  ).map(([type, data]) => ({ type, count: data.count, value: data.value }));
 
   const assetsByDepartment = Object.entries(
-    assets.reduce((acc, asset) => {
-      acc[asset.department] = (acc[asset.department] || 0) + 1;
+    nonRemovedAssets.reduce((acc, asset) => {
+      if (!acc[asset.department]) {
+        acc[asset.department] = { count: 0, value: 0 };
+      }
+      acc[asset.department].count += 1;
+      acc[asset.department].value += asset.currentValue || 0;
       return acc;
-    }, {} as Record<string, number>)
-  ).map(([department, count]) => ({ department, count }));
+    }, {} as Record<string, { count: number; value: number }>)
+  ).map(([department, data]) => ({ department, count: data.count, value: data.value }));
 
   const assetsByStatus = Object.entries(
     assets.reduce((acc, asset) => {
@@ -286,23 +322,62 @@ export const calculateDashboardStats = (assets: Asset[]): DashboardStats => {
     }, {} as Record<string, number>)
   ).map(([status, count]) => ({ status, count }));
 
+  const assetsByOwnership = Object.entries(
+    nonRemovedAssets.reduce((acc, asset) => {
+      acc[asset.ownership] = (acc[asset.ownership] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>)
+  ).map(([ownership, count]) => ({ ownership, count }));
+
+  const assetsByLocation = Object.entries(
+    nonRemovedAssets.reduce((acc, asset) => {
+      acc[asset.primaryLocation] = (acc[asset.primaryLocation] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>)
+  ).map(([location, count]) => ({ location, count }));
+
   return {
-    totalAssets,
-    activeAssets,
-    inactiveAssets,
-    removedAssets,
-    underWarranty,
-    expiredWarranty,
-    expiringWarranty,
-    requiresAction,
+    totalAssets: nonRemovedAssets.length,
+    activeAssets: activeAssets.length,
+    inactiveAssets: inactiveAssets.length,
+    removedAssets: removedAssets.length,
+    reservedAssets: reservedAssets.length,
+    underWarranty: nonRemovedAssets.filter(a => a.warrantyStatus === 'Active').length,
+    expiredWarranty: nonRemovedAssets.filter(a => a.warrantyStatus === 'Expired').length,
+    expiringWarranty: nonRemovedAssets.filter(a => a.warrantyStatus === 'Expiring Soon').length,
+    requiresAction: nonRemovedAssets.filter(a => a.action).length,
+    assignedAssets,
+    unassignedAssets,
+    totalAssetValue,
+    totalDepreciation,
     assetsByType,
     assetsByDepartment,
     assetsByStatus,
+    assetsByOwnership,
+    assetsByLocation,
   };
 };
 
 // Dropdown Options
 export const mockDropdownOptions: DropdownOption[] = [
+  // Asset Codes (prefixes)
+  { id: 'ac1', category: 'assetCode', value: 'BTSPL-LPT' },
+  { id: 'ac2', category: 'assetCode', value: 'BTSPL-DSK' },
+  { id: 'ac3', category: 'assetCode', value: 'BTSPL-MON' },
+  { id: 'ac4', category: 'assetCode', value: 'BTSPL-PRN' },
+  { id: 'ac5', category: 'assetCode', value: 'BTSPL-KBM' },
+  { id: 'ac6', category: 'assetCode', value: 'BTSPL-HDP' },
+  
+  // Asset Types
+  { id: 'at1', category: 'assetType', value: 'Laptop' },
+  { id: 'at2', category: 'assetType', value: 'Desktop' },
+  { id: 'at3', category: 'assetType', value: 'Monitor' },
+  { id: 'at4', category: 'assetType', value: 'Printer' },
+  { id: 'at5', category: 'assetType', value: 'Keyboard' },
+  { id: 'at6', category: 'assetType', value: 'Mouse' },
+  { id: 'at7', category: 'assetType', value: 'Headphone' },
+  { id: 'at8', category: 'assetType', value: 'Keyboard + Mouse Combo' },
+  
   // Brands
   { id: 'b1', category: 'brand', value: 'Dell' },
   { id: 'b2', category: 'brand', value: 'HP' },
@@ -312,6 +387,8 @@ export const mockDropdownOptions: DropdownOption[] = [
   { id: 'b6', category: 'brand', value: 'Logitech' },
   { id: 'b7', category: 'brand', value: 'Jabra' },
   { id: 'b8', category: 'brand', value: 'Apple' },
+  { id: 'b9', category: 'brand', value: 'Asus' },
+  { id: 'b10', category: 'brand', value: 'Acer' },
   
   // Models
   { id: 'm1', category: 'model', value: 'Latitude 5520' },
@@ -319,6 +396,7 @@ export const mockDropdownOptions: DropdownOption[] = [
   { id: 'm3', category: 'model', value: 'ThinkCentre M920' },
   { id: 'm4', category: 'model', value: 'Inspiron 15' },
   { id: 'm5', category: 'model', value: 'MacBook Pro 14' },
+  { id: 'm6', category: 'model', value: 'ThinkPad X1 Carbon' },
   
   // Vendors
   { id: 'v1', category: 'purchaseVendor', value: 'Dell India' },
@@ -327,6 +405,7 @@ export const mockDropdownOptions: DropdownOption[] = [
   { id: 'v4', category: 'purchaseVendor', value: 'Amazon Business' },
   { id: 'v5', category: 'purchaseVendor', value: 'Flipkart Business' },
   { id: 'v6', category: 'purchaseVendor', value: 'Canon India' },
+  { id: 'v7', category: 'purchaseVendor', value: 'Ingram Micro' },
   
   // Actions
   { id: 'a1', category: 'action', value: 'Repair' },
@@ -334,4 +413,33 @@ export const mockDropdownOptions: DropdownOption[] = [
   { id: 'a3', category: 'action', value: 'Upgrade Required' },
   { id: 'a4', category: 'action', value: 'Dispose' },
   { id: 'a5', category: 'action', value: 'Return to Vendor' },
+  { id: 'a6', category: 'action', value: 'Under Maintenance' },
+  
+  // Departments
+  { id: 'd1', category: 'department', value: 'Engineering' },
+  { id: 'd2', category: 'department', value: 'HR' },
+  { id: 'd3', category: 'department', value: 'IT' },
+  { id: 'd4', category: 'department', value: 'Finance' },
+  { id: 'd5', category: 'department', value: 'Admin' },
+  { id: 'd6', category: 'department', value: 'Marketing' },
+  { id: 'd7', category: 'department', value: 'Sales' },
+  { id: 'd8', category: 'department', value: 'Operations' },
+  
+  // Locations
+  { id: 'l1', category: 'location', value: 'Bangalore' },
+  { id: 'l2', category: 'location', value: 'Mumbai' },
+  { id: 'l3', category: 'location', value: 'Hyderabad' },
+  { id: 'l4', category: 'location', value: 'Delhi' },
+  { id: 'l5', category: 'location', value: 'Chennai' },
+  { id: 'l6', category: 'location', value: 'Pune' },
+  
+  // Sub Functions
+  { id: 'sf1', category: 'subFunction', value: 'Development' },
+  { id: 'sf2', category: 'subFunction', value: 'QA' },
+  { id: 'sf3', category: 'subFunction', value: 'DevOps' },
+  { id: 'sf4', category: 'subFunction', value: 'Support' },
+  { id: 'sf5', category: 'subFunction', value: 'Recruitment' },
+  { id: 'sf6', category: 'subFunction', value: 'Accounts' },
+  { id: 'sf7', category: 'subFunction', value: 'Digital' },
+  { id: 'sf8', category: 'subFunction', value: 'Payroll' },
 ];

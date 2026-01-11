@@ -29,6 +29,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Plus, Pencil, Trash2, X, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 const categoryLabels: Record<DropdownCategory, string> = {
   assetCode: 'Asset Codes',
@@ -39,14 +40,17 @@ const categoryLabels: Record<DropdownCategory, string> = {
   serialNo: 'Serial Numbers',
   hostName: 'Host Names',
   briefConfig: 'Configurations',
-  purchaseVendor: 'Purchase Vendors',
+  purchaseVendor: 'Vendors',
+  department: 'Departments',
+  location: 'Locations',
+  subFunction: 'Sub-Functions',
 };
 
 export default function Settings() {
   const { hasPermission } = useAuth();
   const { toast } = useToast();
   const [options, setOptions] = useState<DropdownOption[]>(mockDropdownOptions);
-  const [activeTab, setActiveTab] = useState<DropdownCategory>('brand');
+  const [activeTab, setActiveTab] = useState<DropdownCategory>('assetType');
   const [newValue, setNewValue] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -177,13 +181,20 @@ export default function Settings() {
     });
   };
 
+  // Group categories for better organization
+  const categoryGroups = {
+    'Asset Properties': ['assetCode', 'assetType', 'action'] as DropdownCategory[],
+    'Hardware': ['brand', 'model'] as DropdownCategory[],
+    'Business': ['purchaseVendor', 'department', 'location', 'subFunction'] as DropdownCategory[],
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Page Header */}
       <div>
         <h1 className="text-3xl font-bold text-foreground">Settings</h1>
         <p className="text-muted-foreground mt-1">
-          Manage dropdown options and system configuration
+          Manage dropdown options used in asset forms
         </p>
       </div>
 
@@ -192,28 +203,33 @@ export default function Settings() {
         <CardHeader>
           <CardTitle>Dropdown Options</CardTitle>
           <CardDescription>
-            Manage reusable dropdown values for asset forms
+            Configure reusable dropdown values for asset forms. These options will appear in the Add/Edit Asset dialogs.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as DropdownCategory)}>
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
-              <TabsList className="flex flex-wrap h-auto gap-1">
-                {(Object.keys(categoryLabels) as DropdownCategory[]).map((category) => (
-                  <TabsTrigger
-                    key={category}
-                    value={category}
-                    className="text-xs px-3 py-1.5"
-                  >
-                    {categoryLabels[category]}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
+            <div className="flex flex-col gap-4 mb-4">
+              <ScrollArea className="w-full">
+                <TabsList className="inline-flex h-auto gap-1 p-1 flex-wrap">
+                  {Object.entries(categoryGroups).map(([group, categories]) => (
+                    categories.map((category) => (
+                      <TabsTrigger
+                        key={category}
+                        value={category}
+                        className="text-xs px-3 py-1.5"
+                      >
+                        {categoryLabels[category]}
+                      </TabsTrigger>
+                    ))
+                  ))}
+                </TabsList>
+              </ScrollArea>
+              
               <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button size="sm">
+                  <Button size="sm" className="w-fit">
                     <Plus className="h-4 w-4 mr-1" />
-                    Add Option
+                    Add {categoryLabels[activeTab]}
                   </Button>
                 </DialogTrigger>
                 <DialogContent>
@@ -248,7 +264,7 @@ export default function Settings() {
                 <div className="border rounded-lg p-4">
                   {filteredOptions.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
-                      No options found. Click "Add Option" to create one.
+                      No options found. Click "Add {categoryLabels[activeTab]}" to create one.
                     </div>
                   ) : (
                     <div className="flex flex-wrap gap-2">
@@ -357,7 +373,7 @@ export default function Settings() {
             </div>
             <div className="p-4 rounded-lg bg-muted">
               <p className="text-sm text-muted-foreground">Last Updated</p>
-              <p className="text-lg font-semibold">January 8, 2026</p>
+              <p className="text-lg font-semibold">January 11, 2026</p>
             </div>
           </div>
         </CardContent>
