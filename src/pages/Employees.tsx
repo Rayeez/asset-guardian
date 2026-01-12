@@ -25,18 +25,9 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
 import {
   Plus,
   Search,
@@ -50,7 +41,9 @@ import {
   UserCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useToast } from '@/hooks/use-toast';
+import { EmployeeViewDialog } from '@/components/employees/EmployeeViewDialog';
+import { EmployeeFormDialog } from '@/components/employees/EmployeeFormDialog';
+import { DeleteEmployeeDialog } from '@/components/employees/DeleteEmployeeDialog';
 
 const employeeTypeVariants: Record<string, string> = {
   Permanent: 'status-active',
@@ -59,23 +52,66 @@ const employeeTypeVariants: Record<string, string> = {
 
 export default function Employees() {
   const { hasPermission } = useAuth();
-  const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [employees, setEmployees] = useState<Employee[]>(mockEmployees);
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [newEmployee, setNewEmployee] = useState({
-    empNo: '',
-    displayName: '',
-    email: '',
-    employeeType: 'Permanent' as 'Permanent' | 'Contractual',
-    department: '',
-    subFunction: '',
-  });
+
+  // Dialog states
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [formDialogOpen, setFormDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
 
   const canEdit = hasPermission(['admin', 'hr']);
   const canDelete = hasPermission(['admin']);
+
+  const handleViewEmployee = (employee: Employee) => {
+    setSelectedEmployee(employee);
+    setViewDialogOpen(true);
+  };
+
+  const handleAddEmployee = () => {
+    setSelectedEmployee(null);
+    setFormDialogOpen(true);
+  };
+
+  const handleEditEmployee = (employee: Employee) => {
+    setSelectedEmployee(employee);
+    setFormDialogOpen(true);
+  };
+
+  const handleDeleteEmployee = (employee: Employee) => {
+    setSelectedEmployee(employee);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleFormSubmit = (data: Partial<Employee>) => {
+    if (selectedEmployee) {
+      // Update existing employee
+      setEmployees((prev) =>
+        prev.map((e) =>
+          e.id === selectedEmployee.id ? { ...e, ...data } : e
+        )
+      );
+    } else {
+      // Add new employee
+      const newEmployee: Employee = {
+        id: `E${String(employees.length + 1).padStart(3, '0')}`,
+        empNo: data.empNo || '',
+        displayName: data.displayName || '',
+        email: data.email || '',
+        employeeType: data.employeeType || 'Permanent',
+        department: data.department || '',
+        subFunction: data.subFunction,
+      };
+      setEmployees((prev) => [...prev, newEmployee]);
+    }
+  };
+
+  const handleDeleteConfirm = (employeeId: string) => {
+    setEmployees((prev) => prev.filter((e) => e.id !== employeeId));
+  };
 
   const filteredEmployees = useMemo(() => {
     return employees.filter((employee) => {
@@ -100,38 +136,6 @@ export default function Employees() {
     setDepartmentFilter('all');
     setTypeFilter('all');
     setSearchQuery('');
-  };
-
-  const handleAddEmployee = () => {
-    if (!newEmployee.empNo || !newEmployee.displayName || !newEmployee.email || !newEmployee.department) {
-      toast({
-        title: 'Validation Error',
-        description: 'Please fill in all required fields.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    const employee: Employee = {
-      id: `E${String(employees.length + 1).padStart(3, '0')}`,
-      ...newEmployee,
-    };
-
-    setEmployees([...employees, employee]);
-    setIsAddDialogOpen(false);
-    setNewEmployee({
-      empNo: '',
-      displayName: '',
-      email: '',
-      employeeType: 'Permanent',
-      department: '',
-      subFunction: '',
-    });
-
-    toast({
-      title: 'Employee Added',
-      description: `${employee.displayName} has been added successfully.`,
-    });
   };
 
   const exportToCSV = () => {
@@ -171,95 +175,10 @@ export default function Employees() {
             Export
           </Button>
           {canEdit && (
-            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Employee
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[500px]">
-                <DialogHeader>
-                  <DialogTitle>Add New Employee</DialogTitle>
-                  <DialogDescription>
-                    Fill in the employee details below.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="empNo">Employee No *</Label>
-                      <Input
-                        id="empNo"
-                        placeholder="BTSPL007"
-                        value={newEmployee.empNo}
-                        onChange={(e) => setNewEmployee({ ...newEmployee, empNo: e.target.value })}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="displayName">Full Name *</Label>
-                      <Input
-                        id="displayName"
-                        placeholder="John Doe"
-                        value={newEmployee.displayName}
-                        onChange={(e) => setNewEmployee({ ...newEmployee, displayName: e.target.value })}
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email *</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="john.doe@btspl.com"
-                      value={newEmployee.email}
-                      onChange={(e) => setNewEmployee({ ...newEmployee, email: e.target.value })}
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="employeeType">Employee Type *</Label>
-                      <Select
-                        value={newEmployee.employeeType}
-                        onValueChange={(value) => setNewEmployee({ ...newEmployee, employeeType: value as 'Permanent' | 'Contractual' })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Permanent">Permanent</SelectItem>
-                          <SelectItem value="Contractual">Contractual</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="department">Department *</Label>
-                      <Input
-                        id="department"
-                        placeholder="Engineering"
-                        value={newEmployee.department}
-                        onChange={(e) => setNewEmployee({ ...newEmployee, department: e.target.value })}
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="subFunction">Sub-Function</Label>
-                    <Input
-                      id="subFunction"
-                      placeholder="Development"
-                      value={newEmployee.subFunction}
-                      onChange={(e) => setNewEmployee({ ...newEmployee, subFunction: e.target.value })}
-                    />
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button onClick={handleAddEmployee}>Add Employee</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+            <Button onClick={handleAddEmployee}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Employee
+            </Button>
           )}
         </div>
       </div>
@@ -430,21 +349,27 @@ export default function Employees() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleViewEmployee(employee)}>
                               <Eye className="h-4 w-4 mr-2" />
                               View Details
                             </DropdownMenuItem>
                             {canEdit && (
-                              <DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleEditEmployee(employee)}>
                                 <Pencil className="h-4 w-4 mr-2" />
                                 Edit
                               </DropdownMenuItem>
                             )}
                             {canDelete && (
-                              <DropdownMenuItem className="text-destructive focus:text-destructive">
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                Delete
-                              </DropdownMenuItem>
+                              <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  onClick={() => handleDeleteEmployee(employee)}
+                                  className="text-destructive focus:text-destructive"
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </>
                             )}
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -462,6 +387,27 @@ export default function Employees() {
           )}
         </CardContent>
       </Card>
+
+      {/* Dialogs */}
+      <EmployeeViewDialog
+        open={viewDialogOpen}
+        onOpenChange={setViewDialogOpen}
+        employee={selectedEmployee}
+      />
+
+      <EmployeeFormDialog
+        open={formDialogOpen}
+        onOpenChange={setFormDialogOpen}
+        employee={selectedEmployee}
+        onSubmit={handleFormSubmit}
+      />
+
+      <DeleteEmployeeDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        employee={selectedEmployee}
+        onConfirm={handleDeleteConfirm}
+      />
     </div>
   );
 }
